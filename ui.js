@@ -12,6 +12,8 @@ export const ui = {
   sheet: null,
   ob: null,
   compass: { on: false, heading: null, angle: 0, aligned: false },
+  decks: { today: null, wirid: 0 }, // active card per deck (today: null = follow the clock)
+  wirid: { counts: {}, mode: 'cards' },
   installPrompt: null,
 };
 

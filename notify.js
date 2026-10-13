@@ -88,8 +88,8 @@ export async function showSystem(ev) {
   if (permission() !== 'granted') return;
   const opts = {
     body: ev.body,
-    icon: 'icons/icon-192.png',
-    badge: 'icons/icon-192.png',
+    icon: 'icon-192.png',
+    badge: 'icon-192.png',
     tag: ev.id,
     renotify: true,
     vibrate: [180, 80, 180],

@@ -22,7 +22,7 @@ export function defaults() {
       highLat: 'AngleBased',
       adjust: { fajr: 0, sunrise: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 },
       timeFormat: '12',
-      theme: 'system',
+      theme: 'dark',
       hijriAdjust: 0,
       autoQada: true,
       notify: {
@@ -35,6 +35,7 @@ export function defaults() {
       },
     },
     logs: {}, // { 'YYYY-MM-DD': { fajr: { s: 'ontime', at: 1700000000000, q?: 1 } } }
+    wirid: {}, // { 'YYYY-MM-DD': completed sessions }
     qada: {
       counts: zero(),
       done: 0,

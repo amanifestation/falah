@@ -1,10 +1,10 @@
 // Falah service worker: offline app shell + notification actions.
-const CACHE = 'falah-v1';
+const CACHE = 'falah-v2';
 const SHELL = [
-  './', 'index.html', 'manifest.webmanifest', 'css/app.css',
-  'js/app.js', 'js/views.js', 'js/ui.js', 'js/store.js', 'js/times.js', 'js/tracker.js',
-  'js/notify.js', 'js/praytimes.js', 'js/data.js', 'js/icons.js',
-  'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
+  './', 'index.html', 'manifest.webmanifest', 'app.css',
+  'app.js', 'views.js', 'ui.js', 'store.js', 'times.js', 'tracker.js', 'notify.js',
+  'praytimes.js', 'data.js', 'icons.js', 'art.js', 'wirid.js',
+  'icon.svg', 'icon-192.png', 'icon-512.png',
 ];
 
 self.addEventListener('install', (e) => {

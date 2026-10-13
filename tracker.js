@@ -128,7 +128,9 @@ export function achievements() {
   const fajrRun = bestRun((k) => ON_TIME.has(statusOf(k, 'fajr')));
   const q = S().qada;
   const qRemaining = qadaRemaining();
+  const wirid = Object.values(S().wirid || {}).reduce((a, n) => a + n, 0);
   return [
+    { id: 'wirid10', title: 'Ahl al-Dhikr', desc: 'Complete the wirid 10 times', got: wirid >= 10, icon: 'beads', progress: Math.min(1, wirid / 10) },
     { id: 'first', title: 'First Step', desc: 'Log your first prayer', got: t.logged > 0, icon: 'sparkle' },
     { id: 'fullday', title: 'Complete Day', desc: 'All five prayers in one day', got: best >= 1, icon: 'check' },
     { id: 's7', title: 'Steadfast', desc: '7-day prayer streak', got: best >= 7, icon: 'flame', progress: Math.min(1, best / 7) },
@@ -139,6 +141,15 @@ export function achievements() {
     { id: 'qada100', title: 'Clearing the Debt', desc: '100 Qada prayers completed', got: q.done >= 100, icon: 'rotate', progress: Math.min(1, q.done / 100) },
     { id: 'qadaZero', title: 'Slate Restored', desc: 'Bring your Qada list to zero', got: q.done > 0 && qRemaining === 0, icon: 'trophy' },
   ];
+}
+
+export const wiridToday = () => (S().wirid || {})[todayKey()] || 0;
+export function wiridComplete() {
+  store.update((s) => {
+    const k = todayKey();
+    s.wirid ||= {};
+    s.wirid[k] = (s.wirid[k] || 0) + 1;
+  });
 }
 
 // ---- Qada ledger ---------------------------------------------------------

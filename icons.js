@@ -45,6 +45,11 @@ const P = {
   volume: '<path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/>',
   edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  beads: '<circle cx="12" cy="10" r="6.5" stroke-width="2.8" stroke-dasharray="0.01 3.4"/><path d="M12 16.5v2.5"/><path d="M10.4 21.5 12 19l1.6 2.5"/>',
+  arrowR: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  arrowL: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
+  layers: '<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
   heart: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>',
 };
 

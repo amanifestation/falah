@@ -1,23 +1,24 @@
 {
   "name": "Falah — Salah Companion",
   "short_name": "Falah",
-  "description": "Prayer times, reminders, a daily Salah tracker and a Qada planner.",
+  "description": "Prayer times, reminders, a daily Salah tracker, wirid & doa and a Qada planner.",
   "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#08120F",
-  "theme_color": "#0E6B58",
+  "background_color": "#24231B",
+  "theme_color": "#24231B",
   "categories": ["lifestyle", "productivity"],
   "icons": [
-    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
     { "name": "Tracker", "url": "./?tab=tracker" },
+    { "name": "Wirid & Doa", "url": "./?tab=wirid" },
     { "name": "Qada", "url": "./?tab=qada" },
     { "name": "Qibla", "url": "./?tab=qibla" }
   ]

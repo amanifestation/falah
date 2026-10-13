@@ -8,16 +8,20 @@ import { qiblaBearing, distanceKm } from './praytimes.js';
 import { icon } from './icons.js';
 import { ui, S, $, esc, toast, celebrate, haptic, pname } from './ui.js';
 import {
-  Onboarding, TodayScreen, TrackerScreen, QadaScreen, QiblaScreen, SettingsScreen, SHEETS, cityResults, estimateCount,
+  Onboarding, TodayScreen, TrackerScreen, QadaScreen, QiblaScreen, SettingsScreen, WiridScreen, WiridCard,
+  SHEETS, cityResults, estimateCount, todayDeckIndex,
 } from './views.js';
+import { WIRID } from './wirid.js';
+import { art, PERIOD_ART } from './art.js';
 
-const SCREENS = { today: TodayScreen, tracker: TrackerScreen, qada: QadaScreen, qibla: QiblaScreen, settings: SettingsScreen };
+const SCREENS = {
+  today: TodayScreen, tracker: TrackerScreen, wirid: WiridScreen, qada: QadaScreen, qibla: QiblaScreen, settings: SettingsScreen,
+};
 const TABS = [
   { id: 'today', label: 'Today', icon: 'today' },
   { id: 'tracker', label: 'Tracker', icon: 'chart' },
+  { id: 'wirid', label: 'Wirid', icon: 'beads' },
   { id: 'qada', label: 'Qada', icon: 'rotate' },
-  { id: 'qibla', label: 'Qibla', icon: 'compass' },
-  { id: 'settings', label: 'Settings', icon: 'sliders' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -25,13 +29,23 @@ const TABS = [
 // ---------------------------------------------------------------------------
 function shell() {
   $('#app').innerHTML = `
+    <div class="ambient" id="ambient" aria-hidden="true"></div>
     <main id="view" class="view"></main>
-    <nav class="tabbar" aria-label="Main">${TABS.map((t) => `
-      <button class="tab" data-action="go" data-route="${t.id}" aria-label="${t.label}">${icon(t.icon)}<span>${t.label}</span></button>`).join('')}
+    <nav class="dock" aria-label="Main">${TABS.map((t) => `
+      <button class="dock-btn" data-action="go" data-route="${t.id}" aria-label="${t.label}">${icon(t.icon)}<span>${t.label}</span></button>`).join('')}
     </nav>
     <div id="sheet-root" class="sheet-root" aria-hidden="true"></div>
     <div id="toasts" class="toasts" aria-live="polite"></div>
     <div id="fx" class="fx" aria-hidden="true"></div>`;
+}
+
+let ambientKey = '';
+function updateAmbient() {
+  const key = S().onboarded ? PERIOD_ART[nowState().period].join(':') : 'dome:dusk';
+  if (key === ambientKey) return;
+  ambientKey = key;
+  const [scene, pal] = key.split(':');
+  $('#ambient').innerHTML = art(scene, pal);
 }
 
 function render(animate = false) {
@@ -44,12 +58,127 @@ function render(animate = false) {
     void view.offsetWidth;
     view.classList.add('enter');
   }
-  document.querySelectorAll('.tab').forEach((b) => {
+  document.querySelectorAll('.dock-btn').forEach((b) => {
     const on = b.dataset.route === ui.route;
     b.classList.toggle('active', on);
     b.setAttribute('aria-current', on ? 'page' : 'false');
   });
+  updateAmbient();
   live();
+}
+
+// ---------------------------------------------------------------------------
+// Stacked, swipeable card decks
+// ---------------------------------------------------------------------------
+const deckSize = (name) => (name === 'wirid' ? WIRID.length : 5);
+const deckWraps = (name) => name !== 'wirid';
+const deckIndex = (name) => (name === 'today' ? todayDeckIndex() : ui.decks[name]);
+
+/** Move a deck to card `i` without re-rendering (keeps the CSS transitions). */
+function deckGo(name, i) {
+  const n = deckSize(name);
+  const idx = deckWraps(name) ? ((i % n) + n) % n : Math.max(0, Math.min(n - 1, i));
+  if (idx === deckIndex(name) && name !== 'today') return;
+  ui.decks[name] = idx;
+  const deck = document.querySelector(`.deck[data-deck="${name}"]`);
+  if (!deck) return;
+  deck.querySelectorAll('.deck-card').forEach((c) => {
+    const ci = +c.dataset.i;
+    const o = deckWraps(name) ? (ci - idx + n) % n : ci - idx;
+    c.dataset.o = o;
+    c.style.setProperty('--o', o);
+  });
+  const nav = document.querySelector(`[data-nav="${name}"]`);
+  nav?.querySelectorAll('.dots i').forEach((d, di) => d.classList.toggle('on', di === idx));
+  if (!deckWraps(name) && nav) {
+    nav.querySelector('[data-d="-1"]').disabled = idx === 0;
+    nav.querySelector('[data-d="1"]').disabled = idx === n - 1;
+  }
+  document.querySelectorAll(`.ts-cell[data-deck="${name}"]`).forEach((c) => c.classList.toggle('on', +c.dataset.i === idx));
+  const prog = document.querySelector('.wd-progress span');
+  if (name === 'wirid' && prog) prog.style.width = `${((idx + 1) / n) * 100}%`;
+  haptic(6);
+}
+
+let suppressClick = false;
+function bindDecks() {
+  let drag = null;
+  document.addEventListener('pointerdown', (e) => {
+    const card = e.target.closest('.deck-card[data-o="0"]');
+    if (!card || e.button > 0) return;
+    drag = { card, name: card.closest('.deck').dataset.deck, x0: e.clientX, y0: e.clientY, dx: 0, active: false, id: e.pointerId };
+  });
+  document.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x0;
+    const dy = e.clientY - drag.y0;
+    if (!drag.active) {
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        drag.active = true;
+        drag.card.classList.add('dragging');
+      } else if (Math.abs(dy) > 12) {
+        drag = null;
+        return;
+      } else return;
+    }
+    drag.dx = dx;
+    drag.card.style.transform = `translate3d(${dx}px, ${Math.abs(dx) * 0.04}px, 0) rotate(${dx / 24}deg)`;
+  });
+  const end = () => {
+    if (!drag) return;
+    const d = drag;
+    drag = null;
+    if (!d.active) return;
+    suppressClick = true;
+    setTimeout(() => (suppressClick = false), 60);
+    d.card.classList.remove('dragging');
+    const n = deckSize(d.name);
+    const idx = deckIndex(d.name);
+    const dir = d.dx < 0 ? 1 : -1;
+    const blocked = !deckWraps(d.name) && (idx + dir < 0 || idx + dir >= n);
+    if (Math.abs(d.dx) < 70 || blocked) {
+      d.card.style.transform = '';
+      return;
+    }
+    d.card.classList.add('flying');
+    d.card.style.transform = `translate3d(${d.dx < 0 ? -130 : 130}%, 20px, 0) rotate(${d.dx < 0 ? -14 : 14}deg)`;
+    setTimeout(() => {
+      d.card.classList.remove('flying');
+      d.card.style.transform = '';
+      deckGo(d.name, idx + dir);
+    }, 230);
+  };
+  document.addEventListener('pointerup', end);
+  document.addEventListener('pointercancel', end);
+}
+
+// ---------------------------------------------------------------------------
+// Wirid counter
+// ---------------------------------------------------------------------------
+function wiridCount(i) {
+  const w = WIRID[i];
+  const c = Math.min(w.count, (ui.wirid.counts[w.id] || 0) + 1);
+  ui.wirid.counts[w.id] = c;
+  const card = document.querySelector(`.wcard[data-i="${i}"]`);
+  if (card) {
+    // Update in place so the progress ring animates smoothly.
+    const tmp = document.createElement('div');
+    tmp.innerHTML = WiridCard(w, i, card.dataset.o);
+    const fresh = tmp.firstElementChild;
+    const ring = card.querySelector('.counter .b');
+    ring.style.strokeDashoffset = fresh.querySelector('.counter .b').getAttribute('stroke-dashoffset');
+    card.querySelector('.counter-n').innerHTML = fresh.querySelector('.counter-n').innerHTML;
+    card.querySelector('.wc-hint').innerHTML = fresh.querySelector('.wc-hint').innerHTML;
+    card.querySelector('.counter').classList.toggle('done', c >= w.count);
+    card.classList.toggle('done', c >= w.count);
+    const n = card.querySelector('.counter-n');
+    n.animate?.([{ transform: 'scale(1.25)' }, { transform: 'scale(1)' }], { duration: 260, easing: 'cubic-bezier(.3,1.6,.5,1)' });
+  }
+  if (c >= w.count) {
+    haptic([25, 35, 25]);
+    if (i < WIRID.length - 1) setTimeout(() => ui.route === 'wirid' && deckGo('wirid', i + 1), 650);
+    else setTimeout(() => A['wirid-finish'](), 500);
+  } else haptic(10);
 }
 
 /** Per-second updates without re-rendering. */
@@ -71,7 +200,7 @@ function applyTheme() {
   if (t === 'system') delete document.documentElement.dataset.theme;
   else document.documentElement.dataset.theme = t;
   const dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', dark ? '#0A1512' : '#F4F1EA'));
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', dark ? '#24231B' : '#E7E2D3'));
 }
 
 // ---------------------------------------------------------------------------
@@ -309,6 +438,42 @@ const A = {
   open(d) {
     const { sheet, ...params } = d;
     openSheet(sheet, params);
+  },
+  'deck-step'({ deck, d }) {
+    deckGo(deck, deckIndex(deck) + Number(d));
+  },
+  'deck-go'({ deck, i }) {
+    deckGo(deck, Number(i));
+  },
+
+  // Wirid
+  'wirid-count'({ i }) {
+    wiridCount(Number(i));
+  },
+  'wirid-mode'({ v }) {
+    ui.wirid.mode = v;
+    render();
+  },
+  'wirid-reset'() {
+    ui.wirid.counts = {};
+    ui.decks.wirid = 0;
+    render();
+    toast('Wirid restarted', { icon: 'rotate' });
+  },
+  'wirid-finish'() {
+    T.wiridComplete();
+    ui.wirid.counts = {};
+    ui.decks.wirid = 0;
+    render();
+    celebrate();
+    openSheet('wirid-done');
+  },
+  'go-wirid'() {
+    closeSheet();
+    ui.route = 'wirid';
+    ui.wirid.mode = 'cards';
+    window.scrollTo(0, 0);
+    render(true);
   },
   'close-sheet': closeSheet,
   log({ k, p }) {
@@ -572,6 +737,17 @@ const CHANGES = {
 
 function bindEvents() {
   document.addEventListener('click', (e) => {
+    if (suppressClick) {
+      e.preventDefault();
+      return;
+    }
+    const peek = e.target.closest('.deck-card');
+    if (peek && peek.dataset.o !== '0') {
+      // Tapping a card peeking from behind brings it to the front.
+      e.preventDefault();
+      deckGo(peek.closest('.deck').dataset.deck, +peek.dataset.i);
+      return;
+    }
     const el = e.target.closest('[data-action]');
     if (!el || el.disabled) return;
     N.unlockAudio();
@@ -654,6 +830,7 @@ function boot() {
   shell();
   applyTheme();
   bindEvents();
+  bindDecks();
   handleUrl();
   render(true);
 
@@ -670,7 +847,11 @@ function boot() {
     if (!S().onboarded) return;
     const ns = nowState(now);
     const next = [ns.today, ns.current?.k, ns.current?.p, ns.next?.p, ns.period, ns.duha].join('|');
-    if (sig && next !== sig && ui.route !== 'qibla') render();
+    if (sig && next !== sig) {
+      ui.decks.today = null; // a new prayer time began — follow the clock again
+      if (ui.route !== 'qibla' && ui.route !== 'wirid') render();
+      else updateAmbient();
+    }
     sig = next;
     if (now.getSeconds() % 5 === 0) N.tick(now, onReminder);
   }, 1000);
