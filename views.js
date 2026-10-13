@@ -9,6 +9,7 @@ import { qiblaBearing, distanceKm } from './praytimes.js';
 import { icon, logo } from './icons.js';
 import { art, PRAYER_ART } from './art.js';
 import { WIRID, WIRID_INTRO } from './wirid.js';
+import { GUIDE, GUIDE_INTRO, PHASES, HUKUM, resolveGuide } from './guide.js';
 import { ui, S, esc, pct, num, pname, dayLabel, humanDays, Stat, Switch, STATUS_ICON } from './ui.js';
 
 const STATUS_ORDER = ['jamaah', 'ontime', 'late', 'missed'];
@@ -160,6 +161,7 @@ export function TodayScreen() {
   ${TimeStrip(k, ns, idx)}
   ${ReviewBanner()}
   ${WiridCta()}
+  ${GuideCta()}
   ${QadaMini()}
   ${ReminderCard(k)}`;
 }
@@ -243,9 +245,17 @@ function ReviewBanner() {
 
 function WiridCta() {
   const n = T.wiridToday();
-  return `<button class="cta card" data-action="go" data-route="wirid">
+  return `<button class="cta card" data-action="go-recite" data-tab="wirid">
     <span class="cta-art">${art('girih', 'olive')}</span>
     <span class="cta-txt"><small class="spaced">After salah</small><b>Wirid & Doa</b><small>${n ? `Completed ${n}× today · MashaAllah` : `${WIRID.length} steps of remembrance`}</small></span>
+    <span class="gbtn round sm">${icon('arrowR')}</span>
+  </button>`;
+}
+
+function GuideCta() {
+  return `<button class="cta card" data-action="go-recite" data-tab="guide">
+    <span class="cta-art">${art('arcade', 'golden')}</span>
+    <span class="cta-txt"><small class="spaced">Learn & revise</small><b>Salah guide</b><small>Every recitation from takbir to salam</small></span>
     <span class="gbtn round sm">${icon('arrowR')}</span>
   </button>`;
 }
@@ -284,12 +294,29 @@ function ReminderCard(k) {
 // ===========================================================================
 // Wirid & Doa
 // ===========================================================================
+// Recite hub: the Salah guide (inside the prayer) and Wirid & Doa (after the prayer).
+export const RECITE = {
+  wirid: { list: () => WIRID, state: () => ui.wirid },
+  guide: { list: () => GUIDE, state: () => ui.guide },
+};
+const resolveItem = (deck, w) => (deck === 'guide' ? resolveGuide(w, ui.guide) : w);
+
 export function WiridScreen() {
+  const tab = ui.recite.tab;
+  return `
+  ${TopBar({ title: 'Recite', sub: tab === 'guide' ? 'Inside the prayer' : 'After the fardhu prayer' })}
+  <div class="seg full recite-tabs">
+    <button class="${tab === 'guide' ? 'on' : ''}" data-action="recite-tab" data-v="guide">${icon('book')} Salah guide</button>
+    <button class="${tab === 'wirid' ? 'on' : ''}" data-action="recite-tab" data-v="wirid">${icon('beads')} Wirid & doa</button>
+  </div>
+  ${tab === 'guide' ? GuideSection() : WiridSection()}`;
+}
+
+function WiridSection() {
   const n = WIRID.length;
   const today = T.wiridToday();
   const mode = ui.wirid.mode;
   return `
-  ${TopBar({ title: 'Wirid & Doa', sub: 'After the fardhu prayer' })}
   <section class="card hero-art">
     <div class="ha-art">${art('arch', 'night')}</div>
     <div class="ha-body">
@@ -301,41 +328,112 @@ export function WiridScreen() {
     </div>
   </section>
   <div class="seg full">
-    <button class="${mode === 'cards' ? 'on' : ''}" data-action="wirid-mode" data-v="cards">${icon('layers')} Cards</button>
-    <button class="${mode === 'list' ? 'on' : ''}" data-action="wirid-mode" data-v="list">${icon('list')} Full text</button>
+    <button class="${mode === 'cards' ? 'on' : ''}" data-action="recite-mode" data-deck="wirid" data-v="cards">${icon('layers')} Cards</button>
+    <button class="${mode === 'list' ? 'on' : ''}" data-action="recite-mode" data-deck="wirid" data-v="list">${icon('list')} Full text</button>
   </div>
-  ${mode === 'cards' ? WiridDeck() : WiridList()}`;
+  ${mode === 'cards'
+    ? `${ReciteDeck('wirid')}
+      <div class="wd-actions">
+        <button class="pill" data-action="recite-reset" data-deck="wirid">${icon('rotate')} Restart</button>
+        <button class="pill solid" data-action="wirid-finish">${icon('check')} Complete</button>
+      </div>`
+    : `<div class="wlist">${WIRID.map((w, i) => `
+        <section class="lite wl-item">
+          <div class="wc-head"><span class="spaced">${pad2(i + 1)}</span><span class="glass-tag">${w.tag}${w.count > 1 ? ` · ×${w.count}` : ''}</span></div>
+          <h3 class="wc-title">${w.title}</h3>
+          ${WiridText(w)}
+        </section>`).join('')}
+        <button class="pill solid full" data-action="wirid-finish">${icon('check')} Mark wirid complete</button>
+      </div>`}`;
 }
 
-function WiridDeck() {
-  const idx = ui.decks.wirid;
-  const n = WIRID.length;
+function GuideSection() {
+  const mode = ui.guide.mode;
   return `
-  ${DeckNav('wirid', idx, n, false)}
-  <div class="wd-progress"><span style="width:${((idx + 1) / n) * 100}%"></span></div>
-  <div class="deck wdeck" data-deck="wirid" data-n="${n}" data-wrap="0">${WIRID.map((w, i) => WiridCard(w, i, i - idx)).join('')}</div>
-  <div class="wd-actions">
-    <button class="pill" data-action="wirid-reset">${icon('rotate')} Restart</button>
-    <button class="pill solid" data-action="wirid-finish">${icon('check')} Complete</button>
+  <section class="card hero-art">
+    <div class="ha-art">${art('arcade', 'golden')}</div>
+    <div class="ha-body">
+      <p class="spaced">Panduan bacaan solat</p>
+      <h1 class="display">From takbir<br>to salam.</h1>
+      <p class="ha-ref">Mazhab Shafiʿi</p>
+      <p class="just ha-intro">${GUIDE_INTRO}</p>
+      <div class="ha-meta"><span>${PHASES.length - 1} stages · ${GUIDE.length} recitations</span><span class="legend-h">${Object.entries(HUKUM).map(([k, v]) => `<i class="hk h-${k}"></i>${v}`).join(' ')}</span></div>
+    </div>
+  </section>
+  <section class="card flow">
+    <p class="spaced">One rakaʿah</p>
+    <div class="flow-row">${['Qiyam', 'Rukuk', 'Iʿtidal', 'Sujud', 'Duduk', 'Sujud'].map((s, i) => `<span class="flow-step"><i>${i + 1}</i>${s}</span>`).join(icon('chevR', 'flow-arrow'))}</div>
+    <p class="muted small just">Subuh has 2 rakaʿat, Maghrib 3, and Dhuhr, Asr and Isha 4. Sit for the first tashahhud after the second rakaʿah, and for the final tashahhud in the last.</p>
+  </section>
+  <div class="seg full">
+    <button class="${mode === 'list' ? 'on' : ''}" data-action="recite-mode" data-deck="guide" data-v="list">${icon('list')} Guide</button>
+    <button class="${mode === 'cards' ? 'on' : ''}" data-action="recite-mode" data-deck="guide" data-v="cards">${icon('layers')} Step through</button>
+  </div>
+  ${mode === 'cards'
+    ? `${ReciteDeck('guide')}<div class="wd-actions"><button class="pill full" data-action="recite-reset" data-deck="guide">${icon('rotate')} Start again</button></div>`
+    : GuideList()}`;
+}
+
+function GuideList() {
+  return PHASES.map((ph, pi) => {
+    const items = GUIDE.map((g, i) => ({ g, i })).filter((x) => x.g.phase === ph.id);
+    return `<section class="phase">
+      <div class="phase-head"><span class="phase-n">${pad2(pi + 1)}</span><div><h3>${ph.name}</h3><p class="spaced">${ph.posture}</p></div></div>
+      ${ph.note ? `<p class="phase-note just">${ph.note}</p>` : ''}
+      ${items.map(({ g }) => {
+        const w = resolveGuide(g, ui.guide);
+        return `<details class="lite gitem" data-id="${g.id}" ${ui.guide.open.has(g.id) ? 'open' : ''}>
+          <summary>
+            <span class="gi-txt"><b>${w.title}</b><small>${w.tag}${w.count > 1 ? ` · ×${w.count}` : ''}</small></span>
+            <span class="hk-tag h-${w.hukum}">${HUKUM[w.hukum]}</span>
+            ${icon('chevD', 'gi-chev')}
+          </summary>
+          <div class="gi-body">${g.dynamic ? NiatControls() : ''}${WiridText(w)}</div>
+        </details>`;
+      }).join('')}
+    </section>`;
+  }).join('');
+}
+
+function NiatControls() {
+  const o = ui.guide;
+  const seg = (k, opts) => `<div class="seg sm full">${opts.map(([v, l]) => `<button class="${o[k] === v ? 'on' : ''}" data-action="niat-set" data-k="${k}" data-v="${v}">${l}</button>`).join('')}</div>`;
+  return `<div class="niat-ctl">
+    <div class="chips">${PRAYER_IDS.map((p) => `<button class="chip ${o.prayer === p ? 'on' : ''}" data-action="niat-set" data-k="prayer" data-v="${p}">${p === 'fajr' ? 'Subuh' : PRAYER[p].name}</button>`).join('')}</div>
+    ${seg('type', [['ada', 'On time · Adāʾ'], ['qada', 'Make-up · Qaḍāʾ']])}
+    ${seg('role', [['alone', 'Alone'], ['makmum', 'Makmum'], ['imam', 'Imam']])}
   </div>`;
 }
 
-export function WiridCard(w, i, o) {
-  const c = ui.wirid.counts[w.id] || 0;
+function ReciteDeck(deck) {
+  const list = RECITE[deck].list();
+  const idx = ui.decks[deck];
+  const n = list.length;
+  return `
+  ${DeckNav(deck, idx, n, false)}
+  <div class="wd-progress" data-progress="${deck}"><span style="width:${((idx + 1) / n) * 100}%"></span></div>
+  <div class="deck wdeck" data-deck="${deck}" data-n="${n}" data-wrap="0">${list.map((w, i) => ReciteCard(deck, w, i, i - idx)).join('')}</div>`;
+}
+
+export function ReciteCard(deck, raw, i, o) {
+  const w = resolveItem(deck, raw);
+  const n = RECITE[deck].list().length;
+  const c = RECITE[deck].state().counts[w.id] || 0;
   const done = c >= w.count;
   const C = 2 * Math.PI * 26;
   const far = o < -1 || o > 3; // only the cards near the top are rendered
+  const phase = deck === 'guide' ? PHASES.find((p) => p.id === w.phase) : null;
   return `<article class="deck-card wcard card ${done ? 'done' : ''} ${far ? 'is-far' : ''}" data-i="${i}" data-o="${o}" style="--o:${o}">
-    <div class="wc-head"><span class="spaced">${pad2(i + 1)} — ${pad2(WIRID.length)}</span><span class="glass-tag">${w.tag}</span></div>
-    <h3 class="wc-title">${w.title}</h3>
-    <div class="wc-body">${WiridText(w)}</div>
+    <div class="wc-head"><span class="spaced">${pad2(i + 1)} — ${pad2(n)}</span><span class="glass-tag">${phase ? phase.name : w.tag}</span></div>
+    <h3 class="wc-title">${w.title}${w.hukum ? ` <span class="hk-tag h-${w.hukum}">${HUKUM[w.hukum]}</span>` : ''}</h3>
+    <div class="wc-body">${w.dynamic ? NiatControls() : ''}${WiridText(w)}</div>
     <div class="wc-foot">
-      <button class="counter ${done ? 'done' : ''}" data-action="wirid-count" data-i="${i}" aria-label="Count ${w.tag}">
+      <button class="counter ${done ? 'done' : ''}" data-action="recite-count" data-deck="${deck}" data-i="${i}" aria-label="Count ${w.tag}">
         <svg viewBox="0 0 60 60"><circle class="t" cx="30" cy="30" r="26"/><circle class="b" cx="30" cy="30" r="26" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - Math.min(1, c / w.count))}"/></svg>
         <span class="counter-n"><b>${done ? icon('check') : c}</b>${done ? '' : `<small>/ ${w.count}</small>`}</span>
       </button>
       <p class="wc-hint">${done ? 'Done — swipe for next' : w.count > 1 ? `Tap to count<br><b>× ${w.count}</b>` : 'Tap once<br>when recited'}</p>
-      <button class="gbtn round" data-action="deck-step" data-deck="wirid" data-d="1" aria-label="Next">${icon('arrowR')}</button>
+      <button class="gbtn round" data-action="deck-step" data-deck="${deck}" data-d="1" aria-label="Next">${icon('arrowR')}</button>
     </div>
   </article>`;
 }
@@ -352,17 +450,6 @@ function WiridText(w) {
     ${w.afterTr ? `<p class="wc-tr">${w.afterTr}</p>` : ''}
     ${w.ref ? `<p class="wc-ref">${w.ref}</p>` : ''}
     ${w.note ? `<p class="wc-note just">${w.note}</p>` : ''}`;
-}
-
-function WiridList() {
-  return `<div class="wlist">${WIRID.map((w, i) => `
-    <section class="card wl-item">
-      <div class="wc-head"><span class="spaced">${pad2(i + 1)}</span><span class="glass-tag">${w.tag}${w.count > 1 ? ` · ×${w.count}` : ''}</span></div>
-      <h3 class="wc-title">${w.title}</h3>
-      ${WiridText(w)}
-    </section>`).join('')}
-    <button class="pill solid full" data-action="wirid-finish">${icon('check')} Mark wirid complete</button>
-  </div>`;
 }
 
 // ===========================================================================

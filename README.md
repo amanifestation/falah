@@ -32,6 +32,7 @@ no image files and no copyright concerns. The scenes are:
 | --- | --- |
 | **Prayer times** | Calculated on-device for any coordinates. 15 methods including **JAKIM**, MUIS, Kemenag, MWL, ISNA, Umm al-Qura and Diyanet. Shafiʿi/Hanafi Asr, high-latitude rules, per-prayer minute adjustments, monthly timetable. |
 | **Today** | Swipeable deck of prayer cards with live countdown, one-tap logging and reminder toggles. Also a time strip, Hijri date, a daily Qur’an/hadith reminder and an ambient background that follows the time of day. |
+| **Salah guide** | Every recitation inside the prayer, in order, across 9 stages (Opening → Qiyam → Rukuk → Iʿtidal → Sujud → between the sujud → Tashahhud → Salam, plus sujud sahwi). Includes niat (adjustable for prayer, adā’/qaḍā’ and alone/makmum/imam), takbiratul ihram, doa iftitah, taʿawwudh, Al-Fatihah and short surahs, the rukuk, iʿtidal and sujud recitations, doa between the two sujud, qunut Subuh, tahiyyat awal and akhir, selawat Ibrahimiyyah, doa before salam and salam. Each is marked Rukun, Sunnah abʿaḍ or Sunnah (Shafiʿi), with a guide view and a step-through card mode. |
 | **Wirid & Doa** | 17 steps after the fardhu prayer, following common Malaysian Ahli Sunnah wal Jamaah practice. Each step has Arabic with harakat, transliteration and meaning, a tap counter (×3 / ×33) that auto-advances, a full-text mode and a daily completion record. |
 | **Salah tracker** | Log each prayer as *Jamaah*, *On time*, *Late* or *Missed*. Week grid, month calendar, streaks, rates, 30-day breakdown, insights, achievements. |
 | **Accountability** | Review banner for unlogged prayers, a check-in reminder before a prayer ends, Undo everywhere. |
@@ -61,6 +62,7 @@ app.js      Controller: routing, swipe decks, actions, sheets, timers
 views.js    Screens & bottom sheets
 art.js      Procedural Islamic SVG artwork
 wirid.js    Wirid & doa content
+guide.js    Salah guide: recitations inside the prayer + niat builder
 ui.js  store.js  times.js  tracker.js  notify.js  praytimes.js  data.js  icons.js
 icon.svg  icon-192.png  icon-512.png
 ```

@@ -8,10 +8,11 @@ import { qiblaBearing, distanceKm } from './praytimes.js';
 import { icon } from './icons.js';
 import { ui, S, $, esc, toast, celebrate, haptic, pname } from './ui.js';
 import {
-  Onboarding, TodayScreen, TrackerScreen, QadaScreen, QiblaScreen, SettingsScreen, WiridScreen, WiridCard,
+  Onboarding, TodayScreen, TrackerScreen, QadaScreen, QiblaScreen, SettingsScreen, WiridScreen, ReciteCard, RECITE,
   SHEETS, cityResults, estimateCount, todayDeckIndex,
 } from './views.js';
 import { WIRID } from './wirid.js';
+import { GUIDE } from './guide.js';
 import { art, PERIOD_ART } from './art.js';
 
 const SCREENS = {
@@ -20,7 +21,7 @@ const SCREENS = {
 const TABS = [
   { id: 'today', label: 'Today', icon: 'today' },
   { id: 'tracker', label: 'Tracker', icon: 'chart' },
-  { id: 'wirid', label: 'Wirid', icon: 'beads' },
+  { id: 'wirid', label: 'Recite', icon: 'beads' },
   { id: 'qada', label: 'Qada', icon: 'rotate' },
 ];
 
@@ -105,8 +106,8 @@ function fitDecks() {
 // ---------------------------------------------------------------------------
 // Stacked, swipeable card decks
 // ---------------------------------------------------------------------------
-const deckSize = (name) => (name === 'wirid' ? WIRID.length : 5);
-const deckWraps = (name) => name !== 'wirid';
+const deckSize = (name) => ({ wirid: WIRID.length, guide: GUIDE.length }[name] || 5);
+const deckWraps = (name) => name === 'today';
 const deckIndex = (name) => (name === 'today' ? todayDeckIndex() : ui.decks[name]);
 
 /** Move a deck to card `i` without re-rendering (keeps the CSS transitions). */
@@ -137,8 +138,8 @@ function deckGo(name, i) {
     nav.querySelector('[data-d="1"]').disabled = idx === n - 1;
   }
   document.querySelectorAll(`.ts-cell[data-deck="${name}"]`).forEach((c) => c.classList.toggle('on', +c.dataset.i === idx));
-  const prog = document.querySelector('.wd-progress span');
-  if (name === 'wirid' && prog) prog.style.width = `${((idx + 1) / n) * 100}%`;
+  const prog = document.querySelector(`[data-progress="${name}"] span`);
+  if (prog) prog.style.width = `${((idx + 1) / n) * 100}%`;
   haptic(6);
 }
 
@@ -195,17 +196,19 @@ function bindDecks() {
 }
 
 // ---------------------------------------------------------------------------
-// Wirid counter
+// Recitation counter (wirid & salah guide decks)
 // ---------------------------------------------------------------------------
-function wiridCount(i) {
-  const w = WIRID[i];
-  const c = Math.min(w.count, (ui.wirid.counts[w.id] || 0) + 1);
-  ui.wirid.counts[w.id] = c;
-  const card = document.querySelector(`.wcard[data-i="${i}"]`);
+function reciteCount(deck, i) {
+  const list = RECITE[deck].list();
+  const counts = RECITE[deck].state().counts;
+  const w = list[i];
+  const c = Math.min(w.count, (counts[w.id] || 0) + 1);
+  counts[w.id] = c;
+  const card = document.querySelector(`.deck[data-deck="${deck}"] .wcard[data-i="${i}"]`);
   if (card) {
     // Update in place so the progress ring animates smoothly.
     const tmp = document.createElement('div');
-    tmp.innerHTML = WiridCard(w, i, card.dataset.o);
+    tmp.innerHTML = ReciteCard(deck, w, i, card.dataset.o);
     const fresh = tmp.firstElementChild;
     const ring = card.querySelector('.counter .b');
     ring.style.strokeDashoffset = fresh.querySelector('.counter .b').getAttribute('stroke-dashoffset');
@@ -218,8 +221,12 @@ function wiridCount(i) {
   }
   if (c >= w.count) {
     haptic([25, 35, 25]);
-    if (i < WIRID.length - 1) setTimeout(() => ui.route === 'wirid' && deckGo('wirid', i + 1), 650);
-    else setTimeout(() => A['wirid-finish'](), 500);
+    if (i < list.length - 1) setTimeout(() => ui.route === 'wirid' && deckGo(deck, i + 1), 650);
+    else if (deck === 'wirid') setTimeout(() => A['wirid-finish'](), 500);
+    else {
+      celebrate();
+      toast('Alhamdulillah — you have reached the salam. May Allah accept your prayer.', { icon: 'sparkle', tone: 'gold', ms: 4500 });
+    }
   } else haptic(10);
 }
 
@@ -488,19 +495,41 @@ const A = {
     deckGo(deck, Number(i));
   },
 
-  // Wirid
-  'wirid-count'({ i }) {
-    wiridCount(Number(i));
-  },
-  'wirid-mode'({ v }) {
-    ui.wirid.mode = v;
+  // Recite: salah guide & wirid
+  'recite-tab'({ v }) {
+    ui.recite.tab = v;
     render();
   },
-  'wirid-reset'() {
-    ui.wirid.counts = {};
-    ui.decks.wirid = 0;
+  'go-recite'({ tab }) {
+    ui.recite.tab = tab;
+    if (ui.route !== 'wirid') return A.go({ route: 'wirid' });
     render();
-    toast('Wirid restarted', { icon: 'rotate' });
+    window.scrollTo(0, 0);
+  },
+  'recite-count'({ deck, i }) {
+    reciteCount(deck, Number(i));
+  },
+  'recite-mode'({ deck, v }) {
+    RECITE[deck].state().mode = v;
+    render();
+  },
+  'recite-reset'({ deck }) {
+    RECITE[deck].state().counts = {};
+    ui.decks[deck] = 0;
+    render();
+    toast(deck === 'wirid' ? 'Wirid restarted' : 'Guide restarted', { icon: 'rotate' });
+  },
+  'niat-set'({ k, v }) {
+    ui.guide[k] = v;
+    // Refresh only the niat text so open sections and scroll position stay put.
+    document.querySelectorAll('.gitem[data-id="g-niat"] .gi-body, .wcard .niat-ctl').forEach((el) => {
+      const body = el.classList.contains('gi-body') ? el : el.parentElement;
+      const tmp = document.createElement('div');
+      tmp.innerHTML = ReciteCard('guide', GUIDE[0], 0, 0);
+      body.innerHTML = tmp.querySelector('.wc-body').innerHTML;
+    });
+    fitDecks();
+    haptic(6);
   },
   'wirid-finish'() {
     T.wiridComplete();
@@ -513,6 +542,7 @@ const A = {
   'go-wirid'() {
     closeSheet();
     ui.route = 'wirid';
+    ui.recite.tab = 'wirid';
     ui.wirid.mode = 'cards';
     window.scrollTo(0, 0);
     render(true);
@@ -814,6 +844,13 @@ function bindEvents() {
     ui.installPrompt = e;
     if (ui.route === 'settings') render();
   });
+  // Remember which guide sections are expanded so re-renders keep them open.
+  document.addEventListener('toggle', (e) => {
+    const d = e.target;
+    if (!d.classList?.contains('gitem')) return;
+    if (d.open) ui.guide.open.add(d.dataset.id);
+    else ui.guide.open.delete(d.dataset.id);
+  }, true);
   // Returning to the app: refresh only if a prayer time changed meanwhile (no full redraw → no flash).
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) tick();
@@ -867,7 +904,11 @@ function handleUrl() {
     const [k, p] = log.split(':');
     if (/^\d{4}-\d{2}-\d{2}$/.test(k) && PRAYER[p] && T.isDue(k, p)) quickLog(k, p);
   }
-  const route = params.get('tab');
+  let route = params.get('tab');
+  if (route === 'guide') {
+    route = 'wirid';
+    ui.recite.tab = 'guide';
+  } else if (route === 'wirid') ui.recite.tab = 'wirid';
   if (route && SCREENS[route]) ui.route = route;
   if (log || route) history.replaceState(null, '', location.pathname);
 }

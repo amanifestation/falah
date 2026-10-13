@@ -12,8 +12,10 @@ export const ui = {
   sheet: null,
   ob: null,
   compass: { on: false, heading: null, angle: 0, aligned: false },
-  decks: { today: null, wirid: 0 }, // active card per deck (today: null = follow the clock)
+  decks: { today: null, wirid: 0, guide: 0 }, // active card per deck (today: null = follow the clock)
+  recite: { tab: 'guide' }, // 'guide' (inside the prayer) | 'wirid' (after the prayer)
   wirid: { counts: {}, mode: 'cards' },
+  guide: { counts: {}, mode: 'list', prayer: 'dhuhr', type: 'ada', role: 'alone', open: new Set(['g-niat']) },
   installPrompt: null,
 };
 

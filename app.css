@@ -28,6 +28,7 @@
   --ambient-overlay: linear-gradient(180deg, rgba(36, 35, 27, 0.3) 0%, rgba(28, 27, 20, 0.7) 50%, rgba(22, 21, 16, 0.9) 100%);
   --ambient-opacity: 0.95;
   --card-back: rgba(50, 49, 38, 0.97);
+  --lite-bg: rgba(40, 39, 30, 0.6);
   --shadow: 0 26px 50px -26px rgba(0, 0, 0, 0.7);
   --blur: 26px;
   --font: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -65,6 +66,7 @@
   --ambient-overlay: linear-gradient(180deg, rgba(236, 231, 217, 0.5) 0%, rgba(232, 227, 213, 0.8) 50%, rgba(230, 224, 208, 0.94) 100%);
   --ambient-opacity: 0.8;
   --card-back: rgba(234, 229, 215, 0.98);
+  --lite-bg: rgba(255, 255, 255, 0.45);
   --shadow: 0 26px 50px -30px rgba(60, 55, 35, 0.5);
   color-scheme: light;
 }
@@ -95,6 +97,7 @@
     --ambient-overlay: linear-gradient(180deg, rgba(236, 231, 217, 0.5) 0%, rgba(232, 227, 213, 0.8) 50%, rgba(230, 224, 208, 0.94) 100%);
     --ambient-opacity: 0.8;
     --card-back: rgba(234, 229, 215, 0.98);
+    --lite-bg: rgba(255, 255, 255, 0.45);
     --shadow: 0 26px 50px -30px rgba(60, 55, 35, 0.5);
     color-scheme: light;
   }
@@ -820,3 +823,43 @@ body.ob-welcome .ambient { display: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* ---------- Recite: salah guide ---------- */
+.lite {
+  position: relative; border-radius: 26px; padding: 18px;
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.025) 55%), var(--lite-bg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px var(--line);
+}
+.recite-tabs button { height: 42px; }
+.h-rukun { --hk: var(--accent); }
+.h-sunnah { --hk: var(--ok); }
+.h-abad { --hk: var(--jamaah); }
+.hk-tag { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--hk); box-shadow: inset 0 0 0 1px var(--hk); white-space: nowrap; vertical-align: middle; }
+.wc-title .hk-tag { margin-left: 6px; position: relative; top: -3px; }
+.legend-h { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+.legend-h .hk { width: 7px; height: 7px; border-radius: 50%; background: var(--hk); margin-left: 6px; }
+
+.flow { padding: 18px 16px; display: flex; flex-direction: column; gap: 12px; }
+.flow-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 2px; }
+.flow-step { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 11px 0 5px; border-radius: 999px; font-size: 12.5px; box-shadow: inset 0 0 0 1px var(--line-2); }
+.flow-step i { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-style: normal; font-size: 11px; font-weight: 600; background: var(--cream); color: var(--cream-ink); }
+.flow-arrow { width: 13px; height: 13px; color: var(--text-3); }
+
+.phase { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.phase-head { display: flex; align-items: center; gap: 14px; padding: 0 4px; }
+.phase-n { font-size: 40px; font-weight: 200; letter-spacing: -0.05em; line-height: 1; color: var(--accent); min-width: 48px; }
+.phase-head h3 { font-size: 22px; font-weight: 300; letter-spacing: -0.03em; line-height: 1.15; }
+.phase-note { font-size: 13px; line-height: 1.6; color: var(--text-2); padding: 0 6px 2px; }
+.gitem { padding: 0; overflow: hidden; }
+.gitem summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 15px 16px; cursor: pointer; }
+.gitem summary::-webkit-details-marker { display: none; }
+.gi-txt { flex: 1; display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.gi-txt b { font-size: 16px; font-weight: 400; letter-spacing: -0.015em; }
+.gi-txt small { font-size: 12px; color: var(--text-3); }
+.gi-chev { width: 18px; height: 18px; color: var(--text-3); transition: transform 0.3s; flex: none; }
+.gitem[open] .gi-chev { transform: rotate(180deg); }
+.gitem[open] summary { box-shadow: inset 0 -1px 0 var(--line); }
+.gi-body { padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+.niat-ctl { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 20px; box-shadow: inset 0 0 0 1px var(--line); }
+.niat-ctl .chips { gap: 6px; }
+.niat-ctl .chip { height: 32px; padding: 0 12px; font-size: 12.5px; }
