@@ -61,7 +61,7 @@ export function Onboarding() {
   const animate = o.shown !== step;
   o.shown = step;
   return `<div class="ob ob-${step}">
-    <div class="ob-bg">${art(step ? 'girih' : 'dome', step ? 'olive' : 'dusk')}</div>
+    ${step ? '' : `<div class="ob-bg">${art('dome', 'dusk')}</div>`}
     ${top}<div class="ob-body ${animate ? 'enter' : ''}">${bodies[step](o)}</div>
   </div>`;
 }
@@ -311,9 +311,9 @@ function WiridDeck() {
   const idx = ui.decks.wirid;
   const n = WIRID.length;
   return `
-  <div class="deck wdeck" data-deck="wirid" data-n="${n}" data-wrap="0">${WIRID.map((w, i) => WiridCard(w, i, i - idx)).join('')}</div>
-  <div class="wd-progress"><span style="width:${((idx + 1) / n) * 100}%"></span></div>
   ${DeckNav('wirid', idx, n, false)}
+  <div class="wd-progress"><span style="width:${((idx + 1) / n) * 100}%"></span></div>
+  <div class="deck wdeck" data-deck="wirid" data-n="${n}" data-wrap="0">${WIRID.map((w, i) => WiridCard(w, i, i - idx)).join('')}</div>
   <div class="wd-actions">
     <button class="pill" data-action="wirid-reset">${icon('rotate')} Restart</button>
     <button class="pill solid" data-action="wirid-finish">${icon('check')} Complete</button>
@@ -324,7 +324,8 @@ export function WiridCard(w, i, o) {
   const c = ui.wirid.counts[w.id] || 0;
   const done = c >= w.count;
   const C = 2 * Math.PI * 26;
-  return `<article class="deck-card wcard card ${done ? 'done' : ''}" data-i="${i}" data-o="${o}" style="--o:${o}">
+  const far = o < -1 || o > 3; // only the cards near the top are rendered
+  return `<article class="deck-card wcard card ${done ? 'done' : ''} ${far ? 'is-far' : ''}" data-i="${i}" data-o="${o}" style="--o:${o}">
     <div class="wc-head"><span class="spaced">${pad2(i + 1)} — ${pad2(WIRID.length)}</span><span class="glass-tag">${w.tag}</span></div>
     <h3 class="wc-title">${w.title}</h3>
     <div class="wc-body">${WiridText(w)}</div>

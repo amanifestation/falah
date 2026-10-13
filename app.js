@@ -40,18 +40,44 @@ function shell() {
 }
 
 let ambientKey = '';
+/**
+ * Paint the ambient backdrop once: the SVG scene is rasterised into a tiny canvas which the
+ * browser upscales smoothly — a soft blur without a live CSS filter (which flickers on phones).
+ */
 function updateAmbient() {
-  const key = S().onboarded ? PERIOD_ART[nowState().period].join(':') : 'dome:dusk';
+  const key = S().onboarded ? PERIOD_ART[nowState().period].join(':') : 'girih:olive';
   if (key === ambientKey) return;
   ambientKey = key;
   const [scene, pal] = key.split(':');
-  $('#ambient').innerHTML = art(scene, pal);
+  const host = $('#ambient');
+  const img = new Image();
+  img.onload = () => {
+    if (ambientKey !== key) return;
+    const mid = document.createElement('canvas');
+    mid.width = 100;
+    mid.height = 130;
+    mid.getContext('2d').drawImage(img, 0, 0, 100, 130);
+    const c = document.createElement('canvas');
+    c.width = 36;
+    c.height = 47;
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(mid, 0, 0, 36, 47);
+    c.className = 'amb-canvas';
+    const old = [...host.querySelectorAll('.amb-canvas')];
+    host.append(c);
+    void c.offsetWidth; // commit opacity:0 first so the fade-in transition runs
+    c.classList.add('in');
+    setTimeout(() => old.forEach((o) => o.remove()), 1000);
+  };
+  img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(art(scene, pal).replace('<svg ', '<svg width="400" height="520" '))}`;
 }
 
 function render(animate = false) {
   const view = $('#view');
   const onboarding = !S().onboarded;
   document.body.classList.toggle('onboarding', onboarding);
+  document.body.classList.toggle('ob-welcome', onboarding && ui.ob.step === 0);
   view.classList.remove('enter');
   view.innerHTML = onboarding ? Onboarding() : SCREENS[ui.route]();
   if (animate) {
@@ -64,7 +90,16 @@ function render(animate = false) {
     b.setAttribute('aria-current', on ? 'page' : 'false');
   });
   updateAmbient();
+  fitDecks();
   live();
+}
+
+/** Size auto-height decks (wirid) to the card on top, so nothing is clipped. */
+function fitDecks() {
+  document.querySelectorAll('.wdeck').forEach((deck) => {
+    const top = deck.querySelector('.deck-card[data-o="0"]');
+    if (top) deck.style.setProperty('--deck-h', `${top.offsetHeight}px`);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -87,7 +122,14 @@ function deckGo(name, i) {
     const o = deckWraps(name) ? (ci - idx + n) % n : ci - idx;
     c.dataset.o = o;
     c.style.setProperty('--o', o);
+    if (!deckWraps(name)) c.classList.toggle('is-far', o < -1 || o > 3);
   });
+  if (deck.classList.contains('wdeck')) {
+    fitDecks();
+    // A long card (e.g. Ayat al-Kursi) may have been scrolled — bring the new card's top into view.
+    const r = deck.getBoundingClientRect();
+    if (r.top < 70) window.scrollTo({ top: window.scrollY + r.top - 150, behavior: 'smooth' });
+  }
   const nav = document.querySelector(`[data-nav="${name}"]`);
   nav?.querySelectorAll('.dots i').forEach((d, di) => d.classList.toggle('on', di === idx));
   if (!deckWraps(name) && nav) {
@@ -772,8 +814,14 @@ function bindEvents() {
     ui.installPrompt = e;
     if (ui.route === 'settings') render();
   });
+  // Returning to the app: refresh only if a prayer time changed meanwhile (no full redraw → no flash).
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && S().onboarded) render();
+    if (!document.hidden) tick();
+  });
+  let resizeT;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeT);
+    resizeT = setTimeout(fitDecks, 150);
   });
   navigator.serviceWorker?.addEventListener('message', (e) => {
     const d = e.data || {};
@@ -824,7 +872,33 @@ function handleUrl() {
   if (log || route) history.replaceState(null, '', location.pathname);
 }
 
-function boot() {
+let sig = '';
+function tick() {
+  const now = new Date();
+  live();
+  if (!S().onboarded) return;
+  const ns = nowState(now);
+  const next = [ns.today, ns.current?.k, ns.current?.p, ns.next?.p, ns.period, ns.duha].join('|');
+  if (sig && next !== sig) {
+    ui.decks.today = null; // a new prayer time began — follow the clock again
+    if (ui.route !== 'qibla' && ui.route !== 'wirid' && !ui.sheet) render();
+    else updateAmbient();
+  }
+  sig = next;
+  if (now.getSeconds() % 5 === 0) N.tick(now, onReminder);
+}
+
+/** Wait for the fonts (max ~1.2 s) so text never jumps from a fallback font after it appears. */
+function fontsReady() {
+  if (!document.fonts?.load) return Promise.resolve();
+  const want = ['300 40px Geist', '400 16px Geist', '500 16px Geist', '400 26px Amiri', 'italic 400 20px "Instrument Serif"'];
+  return Promise.race([
+    Promise.all(want.map((f) => document.fonts.load(f).catch(() => null))),
+    new Promise((r) => setTimeout(r, 1200)),
+  ]);
+}
+
+async function boot() {
   store.load();
   initOnboarding();
   shell();
@@ -832,7 +906,21 @@ function boot() {
   bindEvents();
   bindDecks();
   handleUrl();
+  await fontsReady();
   render(true);
+  // Fade the splash out once the first frame is painted (timeout fallback when rAF is paused).
+  let splashGone = false;
+  const hideSplash = () => {
+    if (splashGone) return;
+    splashGone = true;
+    const splash = document.getElementById('splash');
+    if (!splash) return;
+    splash.classList.add('out');
+    setTimeout(() => splash.remove(), 700);
+  };
+  requestAnimationFrame(() => requestAnimationFrame(hideSplash));
+  setTimeout(hideSplash, 120);
+  document.fonts?.ready?.then(fitDecks);
 
   store.subscribe(() => {
     applyTheme();
@@ -840,21 +928,7 @@ function boot() {
     if (ui.sheet && SHEETS[ui.sheet.name].live) fillSheet();
   });
 
-  let sig = '';
-  setInterval(() => {
-    const now = new Date();
-    live();
-    if (!S().onboarded) return;
-    const ns = nowState(now);
-    const next = [ns.today, ns.current?.k, ns.current?.p, ns.next?.p, ns.period, ns.duha].join('|');
-    if (sig && next !== sig) {
-      ui.decks.today = null; // a new prayer time began — follow the clock again
-      if (ui.route !== 'qibla' && ui.route !== 'wirid') render();
-      else updateAmbient();
-    }
-    sig = next;
-    if (now.getSeconds() % 5 === 0) N.tick(now, onReminder);
-  }, 1000);
+  setInterval(tick, 1000);
 
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

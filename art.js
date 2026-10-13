@@ -255,5 +255,5 @@ export function art(scene = 'girih', palette = 'olive', cls = '') {
   const id = `a${++uid}`;
   const P = PALETTES[palette] || PALETTES.olive;
   const [defs, body] = (SCENES[scene] || SCENES.girih)(P, id);
-  return `<svg class="art ${cls}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false"><defs>${defs}</defs>${body}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="art ${cls}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false"><defs>${defs}</defs>${body}</svg>`;
 }

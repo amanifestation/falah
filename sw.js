@@ -1,5 +1,5 @@
 // Falah service worker: offline app shell + notification actions.
-const CACHE = 'falah-v2';
+const CACHE = 'falah-v3';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'app.css',
   'app.js', 'views.js', 'ui.js', 'store.js', 'times.js', 'tracker.js', 'notify.js',

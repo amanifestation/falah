@@ -10,6 +10,24 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Falah">
+  <script>
+    // Apply the saved theme before anything paints, so the app never flashes the wrong colours.
+    try {
+      var t = ((JSON.parse(localStorage.getItem('falah.v1') || '{}').settings) || {}).theme || 'dark';
+      if (t === 'system') document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  </script>
+  <style>
+    html, .splash { background: #24231B; }
+    html[data-theme='light'], html[data-theme='light'] .splash { background: #E6E0CF; }
+    @media (prefers-color-scheme: light) { html:not([data-theme]), html:not([data-theme]) .splash { background: #E6E0CF; } }
+    body { margin: 0; }
+    .splash { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; transition: opacity 0.6s ease, visibility 0.6s; }
+    .splash.out { opacity: 0; visibility: hidden; }
+    .splash svg { width: 64px; height: 64px; animation: splash-breathe 1.4s ease-in-out infinite alternate; }
+    @keyframes splash-breathe { from { opacity: 0.5; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+  </style>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon-192.png">
@@ -17,8 +35,21 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Geist:wght@200;300;400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
   <link rel="stylesheet" href="app.css">
+  <link rel="modulepreload" href="app.js">
+  <link rel="modulepreload" href="views.js">
+  <link rel="modulepreload" href="art.js">
 </head>
 <body>
+  <div class="splash" id="splash" aria-hidden="true">
+    <svg viewBox="0 0 64 64">
+      <defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E9C77B"/><stop offset="1" stop-color="#B8862F"/></linearGradient></defs>
+      <g fill="none" stroke="url(#sg)" stroke-width="3.2" stroke-linejoin="round">
+        <rect x="14" y="14" width="36" height="36" rx="3"/>
+        <rect x="14" y="14" width="36" height="36" rx="3" transform="rotate(45 32 32)"/>
+      </g>
+      <path d="M40.5 23.5A10.5 10.5 0 1 0 40.5 40.5A9 9 0 1 1 40.5 23.5Z" fill="url(#sg)"/>
+    </svg>
+  </div>
   <div id="app" class="app">
     <noscript><p style="padding:24px">Falah needs JavaScript enabled to calculate prayer times.</p></noscript>
   </div>
