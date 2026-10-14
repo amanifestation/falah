@@ -1,5 +1,5 @@
 // Screen and bottom-sheet renderers (pure HTML strings).
-import { PRAYER, PRAYER_IDS, STATUSES, PERFORMED, ON_TIME, METHODS, CITIES, REMINDERS } from './data.js';
+import { PRAYER, PRAYER_IDS, STATUSES, PERFORMED, ON_TIME, METHODS, CITIES, REMINDERS, ADHANS, ADHAN } from './data.js';
 import {
   todayKey, addDays, daysBetween, weekday, keyLabel, parseKey, fmtTime, timesFor, windowOf, nowState, hijri,
 } from './times.js';
@@ -10,6 +10,7 @@ import { icon, logo } from './icons.js';
 import { art, PRAYER_ART } from './art.js';
 import { WIRID, WIRID_INTRO } from './wirid.js';
 import { GUIDE, GUIDE_INTRO, PHASES, HUKUM, resolveGuide } from './guide.js';
+import { gardenState, gardenSVG, STAGES } from './garden.js';
 import { ui, S, esc, pct, num, pname, dayLabel, humanDays, Stat, Switch, STATUS_ICON } from './ui.js';
 
 const STATUS_ORDER = ['jamaah', 'ontime', 'late', 'missed'];
@@ -160,6 +161,7 @@ export function TodayScreen() {
   ${DeckNav('today', idx, 5)}
   ${TimeStrip(k, ns, idx)}
   ${ReviewBanner()}
+  ${GardenCard(true)}
   ${WiridCta()}
   ${GuideCta()}
   ${QadaMini()}
@@ -250,6 +252,41 @@ function WiridCta() {
     <span class="cta-txt"><small class="spaced">After salah</small><b>Wirid & Doa</b><small>${n ? `Completed ${n}× today · MashaAllah` : `${WIRID.length} steps of remembrance`}</small></span>
     <span class="gbtn round sm">${icon('arrowR')}</span>
   </button>`;
+}
+
+/** Garden of Salah — full card on Tracker, compact preview on Today. */
+export function GardenCard(compact = false) {
+  const st = gardenState();
+  const mood = st.mood.toLowerCase();
+  if (compact) {
+    return `<button class="card garden compact" data-garden data-action="go" data-route="tracker" aria-label="Open your garden">
+      <div class="garden-scene">${gardenSVG(st)}</div>
+      <div class="garden-chip">
+        <span><small class="spaced">Your garden</small><b>${st.stageName}</b></span>
+        <span class="mood m-${mood}">${st.mood}</span>
+      </div>
+    </button>`;
+  }
+  return `<section class="card garden" data-garden>
+    <div class="garden-scene">${gardenSVG(st)}</div>
+    <div class="garden-info">
+      <div class="gi-head">
+        <div><p class="spaced">Garden of Salah</p><h2 class="display sm">${st.stageName}</h2></div>
+        <span class="mood m-${mood}">${st.mood}</span>
+      </div>
+      <div class="stage-track">${STAGES.map((s, i) => `<i class="${i < st.stage ? 'done' : i === st.stage ? 'on' : ''}" title="${s[1]}"></i>`).join('')}</div>
+      <div class="garden-meta">
+        <span><b>${st.species.name}</b> · tree ${st.trees + 1}</span>
+        <span>≈ ${st.toNext} prayer${st.toNext === 1 ? '' : 's'} to <b>${st.nextName}</b></span>
+      </div>
+      <div class="garden-stats">
+        <div><b>${st.trees}</b><small>tree${st.trees === 1 ? '' : 's'} in forest</small></div>
+        <div><b>${Math.round(st.health * 100)}%</b><small>vitality</small></div>
+        <div><b>${st.stage + 1}/${STAGES.length}</b><small>growth stage</small></div>
+      </div>
+      <p class="just small muted">Every prayer you log brings rain and helps your tree grow — from a seed to a sapling, to blossom and fruit. Its fruit becomes the seed of the next tree, until your garden becomes a forest. Missed prayers make it wilt, day by day; praying again revives it.</p>
+    </div>
+  </section>`;
 }
 
 function GuideCta() {
@@ -482,6 +519,7 @@ export function TrackerScreen() {
 
   return `
   ${TopBar({ title: 'Tracker', sub: 'Your journey' })}
+  ${GardenCard()}
   <section class="card streak-card">
     <div class="sc-art">${art('girih', 'olive')}</div>
     <div class="sc-body">
@@ -743,6 +781,11 @@ const Row = (ic, title, value, attrs = '', extra = '') =>
 const RowStatic = (ic, title, value, control) =>
   `<div class="row"><span class="row-ic">${icon(ic)}</span><span class="row-txt"><b>${title}</b>${value ? `<small>${value}</small>` : ''}</span>${control}</div>`;
 
+function adhanLabel() {
+  const v = N.adhanVoice();
+  return v === 'chime' ? 'Soft chime' : v === 'silent' ? 'Silent' : `Voice · ${ADHAN[v].name}`;
+}
+
 export function SettingsScreen() {
   const s = S().settings;
   const n = s.notify;
@@ -787,6 +830,7 @@ export function SettingsScreen() {
   <p class="group-label spaced">Reminders</p>
   <section class="card list">
     ${RowStatic('bell', 'Prayer reminders', permText, Switch(n.enabled, 'data-action="notif-toggle"'))}
+    ${Row('music', 'Adhan at prayer time', adhanLabel(), 'data-action="open" data-sheet="adhan"')}
     <div class="row col ${n.enabled ? '' : 'dim'}">
       <span class="row-txt"><b>Remind me for</b></span>
       <div class="chips">${PRAYER_IDS.map((p) => `<button class="chip ${n.prayers[p] ? 'on' : ''}" data-action="toggle" data-path="settings.notify.prayers.${p}">${PRAYER[p].name}</button>`).join('')}</div>
@@ -799,7 +843,9 @@ export function SettingsScreen() {
     ${RowStatic('volume', 'Chime sound', 'Soft bell when a reminder fires', Switch(n.sound, 'data-action="toggle" data-path="settings.notify.sound"'))}
     ${Row('sparkle', 'Send a test reminder', '', 'data-action="test-notif"')}
   </section>
-  <p class="note just">${icon('info')}<span>Reminders fire while Falah is open or running in the background. ${standalone ? '' : isIOS ? 'On iPhone, tap Share → “Add to Home Screen” first to enable notifications.' : 'Install Falah to your home screen for the best experience.'}</span></p>
+  <p class="note just">${icon('info')}<span>${N.isNative()
+    ? 'Reminders are scheduled with your phone for the next six days, so they arrive even when Falah is closed. Open the app at least once a week to keep them topped up.'
+    : `Reminders fire while Falah is open or running in the background. ${standalone ? '' : isIOS ? 'On iPhone, tap Share → “Add to Home Screen” first to enable notifications.' : 'Install Falah to your home screen for the best experience.'}`}</span></p>
 
   <p class="group-label spaced">Tracking</p>
   <section class="card list">
@@ -985,6 +1031,36 @@ export const SHEETS = {
         <thead><tr><th>Day</th><th>Fajr</th><th>Rise</th><th>Dhuhr</th><th>Asr</th><th>Maghrib</th><th>Isha</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>`;
+    },
+  },
+
+  adhan: {
+    render() {
+      const cur = N.adhanVoice();
+      const playing = N.playingAdhan();
+      const voices = ADHANS.filter((a) => N.adhanAvailable(a.id));
+      const opt = (id, title, sub, preview) => `
+        <div class="voice ${cur === id ? 'on' : ''}">
+          <button class="voice-pick" data-action="adhan-pick" data-id="${id}"><span class="radio-dot"></span><span class="radio-txt"><b>${title}</b><small>${sub}</small></span></button>
+          ${preview ? `<button class="gbtn round sm ${playing === id ? 'on' : ''}" data-action="adhan-preview" data-id="${id}" aria-label="${playing === id ? 'Stop' : 'Play'} ${title}">${icon(playing === id ? 'stop' : 'play')}</button>` : ''}
+        </div>`;
+      return `${Head('music', 'Adhan at prayer time', 'Played when each prayer time begins')}
+      <div class="voices">
+        ${voices.map((a) => opt(a.id, a.name, `${a.note} · ${a.length || ''}`, true)).join('')}
+        ${opt('chime', 'Soft chime', 'A gentle three-note bell', false)}
+        ${opt('silent', 'Silent', 'Notification only, no sound', false)}
+      </div>
+      <p class="note just">${icon('info')}<span>${N.isNative()
+        ? 'In the Android app the adhan plays from the notification, even when Falah is closed. Use the volume or tap the notification to stop it.'
+        : 'In the browser the adhan plays while Falah is open. The Android app plays it even when closed.'} These recordings are the standard adhan; the Subuh phrase “aṣ-ṣalātu khayrun minan-nawm” may not be included.</span></p>
+      <details class="manual lite">
+        <summary>Add your own adhan (e.g. Malaysian)</summary>
+        <p class="small muted just">Save an adhan recording you are allowed to use as <b>adhan_custom.mp3</b> in the Falah folder, then rebuild the app (<i>npm run web</i> → Run). It will appear here as “Your own adhan”.</p>
+      </details>
+      <details class="manual lite">
+        <summary>Credits & licences</summary>
+        <ul class="credits">${ADHANS.filter((a) => !a.optional).map((a) => `<li><b>${a.name}</b> — ${a.author} · ${a.license} · <a href="${a.source}" target="_blank" rel="noopener">Wikimedia Commons</a></li>`).join('')}</ul>
+      </details>`;
     },
   },
 

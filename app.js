@@ -14,6 +14,7 @@ import {
 import { WIRID } from './wirid.js';
 import { GUIDE } from './guide.js';
 import { art, PERIOD_ART } from './art.js';
+import { gardenState, completedScene } from './garden.js';
 
 const SCREENS = {
   today: TodayScreen, tracker: TrackerScreen, wirid: WiridScreen, qada: QadaScreen, qibla: QiblaScreen, settings: SettingsScreen,
@@ -93,6 +94,13 @@ function render(animate = false) {
   updateAmbient();
   fitDecks();
   live();
+  if (ui.route === 'tracker' && ui.gardenRain && !onboarding) {
+    ui.gardenRain = false; // prayers were logged elsewhere — water the garden as it comes into view
+    setTimeout(() => {
+      const host = document.querySelector('[data-garden]');
+      if (host) rain(host);
+    }, 450);
+  }
 }
 
 /** Size auto-height decks (wirid) to the card on top, so nothing is clipped. */
@@ -277,6 +285,7 @@ function fillSheet() {
 function closeSheet() {
   const root = $('#sheet-root');
   if (!ui.sheet) return;
+  if (ui.sheet.name === 'adhan') N.stopAdhan(); // end any voice preview
   ui.sheet = null;
   root.classList.remove('open');
   document.body.classList.remove('sheet-open');
@@ -407,16 +416,93 @@ async function enableNotifications() {
 }
 
 function onReminder(ev) {
-  if (S().settings.notify.sound) N.chime();
   haptic([60, 40, 60]);
+  const voice = N.adhanVoice();
+  if (ev.type === 'adhan' && voice !== 'chime' && voice !== 'silent' && N.playAdhan(voice)) {
+    // The prayer has just begun: offer to stop the adhan rather than "I prayed".
+    toast(`<b>${ev.title}</b><br><small>${ev.body}</small>`, { icon: 'music', tone: 'reminder', action: { label: 'Stop', fn: N.stopAdhan }, ms: 20000 });
+    return;
+  }
+  if (S().settings.notify.sound && !(ev.type === 'adhan' && voice === 'silent')) N.chime();
   const action = ev.type === 'pre' ? null : { label: 'I prayed', fn: () => quickLog(ev.k, ev.p) };
   toast(`<b>${ev.title}</b><br><small>${ev.body}</small>`, { icon: ev.type === 'nudge' ? 'target' : 'bell', tone: 'reminder', action, ms: 12000 });
 }
 
+// ---------------------------------------------------------------------------
+// Garden of Salah effects: rain when a prayer is logged, wilting when one is missed
+// ---------------------------------------------------------------------------
+function gardenFx(s, prev, treesBefore) {
+  const host = document.querySelector('[data-garden]');
+  if (PERFORMED.has(s) && !PERFORMED.has(prev)) {
+    if (ui.route !== 'tracker') ui.gardenRain = true; // replay a shower when the Tracker is opened
+    if (!host) return;
+    rain(host);
+    const after = gardenState();
+    if (after.trees > treesBefore) setTimeout(() => treeCompleted(after), 2300);
+  } else if (s === 'missed' && host) {
+    host.classList.remove('wither');
+    void host.offsetWidth;
+    host.classList.add('wither');
+    setTimeout(() => host.classList.remove('wither'), 2600);
+  }
+}
+
+function rain(host) {
+  const scene = host.querySelector('.garden-scene');
+  if (!scene) return;
+  scene.querySelector('.rain')?.remove();
+  const layer = document.createElement('div');
+  layer.className = 'rain';
+  let html = '';
+  for (let i = 0; i < 64; i++) {
+    html += `<i style="left:${(Math.random() * 100).toFixed(1)}%;height:${12 + Math.round(Math.random() * 16)}px;animation-delay:${(Math.random() * 1.3).toFixed(2)}s;animation-duration:${(0.5 + Math.random() * 0.35).toFixed(2)}s"></i>`;
+  }
+  for (let i = 0; i < 12; i++) {
+    html += `<b style="left:${(8 + Math.random() * 84).toFixed(1)}%;bottom:${(6 + Math.random() * 9).toFixed(1)}%;animation-delay:${(0.4 + Math.random() * 1.5).toFixed(2)}s"></b>`;
+  }
+  layer.innerHTML = html;
+  scene.append(layer);
+  host.classList.add('raining');
+  setTimeout(() => {
+    host.classList.remove('raining');
+    const t = host.querySelector('.tree-main');
+    t?.classList.remove('grow');
+    void t?.getBoundingClientRect();
+    t?.classList.add('grow');
+    sparkle(scene);
+  }, 2000);
+  setTimeout(() => layer.remove(), 3000);
+}
+
+function sparkle(scene) {
+  const s = document.createElement('div');
+  s.className = 'grow-sparks';
+  s.innerHTML = Array.from({ length: 10 }, () => `<i style="left:${(38 + Math.random() * 24).toFixed(1)}%;bottom:${(18 + Math.random() * 40).toFixed(1)}%;animation-delay:${(Math.random() * 0.5).toFixed(2)}s"></i>`).join('');
+  scene.append(s);
+  setTimeout(() => s.remove(), 1800);
+}
+
+/** Show the finished tree bearing fruit; one fruit falls and becomes the seed of the next tree. */
+function treeCompleted(st) {
+  const scene = document.querySelector('[data-garden] .garden-scene');
+  if (scene) {
+    const over = document.createElement('div');
+    over.className = 'garden-over';
+    over.innerHTML = completedScene(st);
+    scene.append(over);
+    setTimeout(() => over.classList.add('out'), 2900);
+    setTimeout(() => over.remove(), 3800);
+  }
+  celebrate();
+  toast('MashaAllah — your tree bore fruit! Its seed begins a new tree, and your forest grows.', { icon: 'sparkle', tone: 'gold', ms: 6000 });
+}
+
 function quickLog(k, p, s = 'ontime') {
   const prev = T.statusOf(k, p);
+  const trees = gardenState().trees;
   T.setLog(k, p, s);
   afterLog(k, p, s, prev);
+  gardenFx(s, prev, trees);
 }
 
 // ---------------------------------------------------------------------------
@@ -557,9 +643,11 @@ const A = {
   'set-status'({ k, p, s, stay, toggle }) {
     const prev = T.statusOf(k, p);
     const next = toggle && prev === s ? null : s || null;
+    const trees = gardenState().trees;
     T.setLog(k, p, next);
     if (!stay) closeSheet();
     afterLog(k, p, next, prev);
+    gardenFx(next, prev, trees);
   },
   'review-all'() {
     const list = T.unlogged(7);
@@ -699,6 +787,17 @@ const A = {
     const ev = { id: `test:${Date.now()}`, type: 'adhan', k: ns.next.k, p, title: `It's time for ${PRAYER[p].name}`, body: 'This is a test reminder from Falah.' };
     onReminder(ev);
     N.showSystem(ev);
+  },
+  'adhan-preview'({ id }) {
+    if (N.playingAdhan() === id) N.stopAdhan();
+    else N.playAdhan(id, () => ui.sheet?.name === 'adhan' && fillSheet());
+    fillSheet();
+  },
+  'adhan-pick'({ id }) {
+    setPath('settings.notify.adhan', id);
+    if (id !== 'chime' && id !== 'silent' && N.playingAdhan() !== id) N.playAdhan(id, () => ui.sheet?.name === 'adhan' && fillSheet());
+    if (id === 'chime') N.chime();
+    fillSheet();
   },
   'name-save'() {
     setPath('profile.name', $('#name-input').value.trim().slice(0, 30));
@@ -939,6 +1038,26 @@ function fontsReady() {
   ]);
 }
 
+/** Native (Capacitor) extras: OS notification actions and the Android back button. */
+function initNativeApp() {
+  document.documentElement.classList.add('native');
+  N.initNative((action, x) => {
+    if (action === 'prayed') quickLog(x.k, x.p);
+    else if (S().onboarded && T.isDue(x.k, x.p)) openSheet('log', { k: x.k, p: x.p });
+  });
+  const App = window.Capacitor.Plugins.App;
+  App?.addListener('backButton', () => {
+    if (ui.sheet) closeSheet();
+    else if (!S().onboarded && ui.ob.step > 0) A['ob-back']();
+    else if (S().onboarded && ui.route !== 'today') A.go({ route: 'today' });
+    else App.exitApp();
+  });
+  App?.addListener('resume', () => {
+    tick();
+    N.syncNative();
+  });
+}
+
 async function boot() {
   store.load();
   initOnboarding();
@@ -967,11 +1086,14 @@ async function boot() {
     applyTheme();
     render();
     if (ui.sheet && SHEETS[ui.sheet.name].live) fillSheet();
+    N.syncNative(); // native app: keep the OS alarms in step with settings and logs
   });
 
   setInterval(tick, 1000);
 
-  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  N.probeAdhans().then(() => ui.route === 'settings' && render());
+  if (N.isNative()) initNativeApp();
+  else if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
   // Warm the times cache for the coming day.

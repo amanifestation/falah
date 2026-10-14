@@ -8,6 +8,7 @@ $mime = @{
   '.css' = 'text/css; charset=utf-8'; '.json' = 'application/json; charset=utf-8'
   '.webmanifest' = 'application/manifest+json'; '.svg' = 'image/svg+xml'
   '.png' = 'image/png'; '.ico' = 'image/x-icon'; '.md' = 'text/plain; charset=utf-8'
+  '.mp3' = 'audio/mpeg'; '.ogg' = 'audio/ogg'
 }
 
 $listener = [System.Net.HttpListener]::new()
@@ -33,7 +34,7 @@ while ($listener.IsListening) {
       $bytes = [Text.Encoding]::UTF8.GetBytes('Not found')
     }
     $res.ContentLength64 = $bytes.Length
-    $res.OutputStream.Write($bytes, 0, $bytes.Length)
+    if ($ctx.Request.HttpMethod -ne 'HEAD') { $res.OutputStream.Write($bytes, 0, $bytes.Length) }
   } catch {
     $res.StatusCode = 500
   } finally {

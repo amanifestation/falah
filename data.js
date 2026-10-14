@@ -162,3 +162,14 @@ export const HIJRI_MONTHS = [
   'Muharram', 'Safar', 'Rabiʿ al-Awwal', 'Rabiʿ al-Thani', 'Jumada al-Ula', 'Jumada al-Akhirah',
   'Rajab', 'Shaʿban', 'Ramadan', 'Shawwal', 'Dhu al-Qaʿdah', 'Dhu al-Hijjah',
 ];
+
+// Adhan recordings bundled with the app (freely licensed, from Wikimedia Commons).
+// File names use only a-z, 0-9 and _ so they can double as Android notification sounds (res/raw).
+export const ADHANS = [
+  { id: 'fakhri', name: 'Sabah Fakhri', note: 'Aleppo, Syria · celebrated voice', file: 'adhan_fakhri.mp3', length: '2:38', license: 'Public domain', author: 'Sabah Fakhri', source: 'https://commons.wikimedia.org/wiki/File:Call_to_prayer_by_Sabah_Fakhry.mp3' },
+  { id: 'gentle', name: 'Gentle', note: 'Soft and unhurried', file: 'adhan_gentle.ogg', length: '2:34', license: 'CC0', author: 'Adam-synagda', source: 'https://commons.wikimedia.org/wiki/File:Beautiful_adhan.ogg' },
+  { id: 'classic', name: 'Classic', note: 'Full traditional adhan', file: 'adhan_classic.ogg', length: '3:03', license: 'CC BY-SA 4.0', author: 'Andrewler', source: 'https://commons.wikimedia.org/wiki/File:Azan.ogg' },
+  { id: 'azeez', name: 'Aaqib Azeez', note: 'Clear and concise', file: 'adhan_azeez.mp3', length: '1:27', license: 'CC BY-SA 4.0', author: 'Atcovi (recording of Aaqib Azeez)', source: 'https://commons.wikimedia.org/wiki/File:The_Adhan_-_Muslim_Call_to_Prayer_-_Aaqib_Azeez.mp3' },
+  { id: 'custom', name: 'Your own adhan', note: 'e.g. your local masjid', file: 'adhan_custom.mp3', optional: true },
+];
+export const ADHAN = Object.fromEntries(ADHANS.map((a) => [a.id, a]));

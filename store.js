@@ -32,6 +32,7 @@ export function defaults() {
         nudge: true, // "time is running out" check-in
         nudgeMins: 30,
         sound: true,
+        adhan: 'fakhri', // voice at prayer time: an ADHANS id, 'chime' or 'silent'
       },
     },
     logs: {}, // { 'YYYY-MM-DD': { fajr: { s: 'ontime', at: 1700000000000, q?: 1 } } }

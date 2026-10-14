@@ -2,6 +2,7 @@
 import * as store from './store.js';
 import { PRAYER_IDS, PERFORMED, ON_TIME } from './data.js';
 import { addDays, daysBetween, todayKey, windowOf, timesFor } from './times.js';
+import { gardenState } from './garden.js';
 
 const S = () => store.get();
 
@@ -129,6 +130,8 @@ export function achievements() {
   const q = S().qada;
   const qRemaining = qadaRemaining();
   const wirid = Object.values(S().wirid || {}).reduce((a, n) => a + n, 0);
+  const garden = gardenState();
+  const forest = garden.trees;
   return [
     { id: 'wirid10', title: 'Ahl al-Dhikr', desc: 'Complete the wirid 10 times', got: wirid >= 10, icon: 'beads', progress: Math.min(1, wirid / 10) },
     { id: 'first', title: 'First Step', desc: 'Log your first prayer', got: t.logged > 0, icon: 'sparkle' },
@@ -137,6 +140,8 @@ export function achievements() {
     { id: 's30', title: 'Istiqamah', desc: '30-day prayer streak', got: best >= 30, icon: 'flame', progress: Math.min(1, best / 30) },
     { id: 'fajr7', title: 'Dawn Riser', desc: 'Fajr on time 7 days running', got: fajrRun >= 7, icon: 'fajr', progress: Math.min(1, fajrRun / 7) },
     { id: 'jamaah40', title: 'People of the Masjid', desc: '40 prayers in congregation', got: t.jamaah >= 40, icon: 'users', progress: Math.min(1, t.jamaah / 40) },
+    { id: 'fruit1', title: 'First Fruit', desc: 'Grow your first tree to fruit', got: forest >= 1, icon: 'sparkle', progress: Math.min(1, garden.g) },
+    { id: 'forest5', title: 'Lush Forest', desc: 'Five trees in your garden', got: forest >= 5, icon: 'heart', progress: Math.min(1, forest / 5) },
     { id: 'qada1', title: 'Turning Back', desc: 'Complete your first Qada prayer', got: q.done >= 1, icon: 'rotate' },
     { id: 'qada100', title: 'Clearing the Debt', desc: '100 Qada prayers completed', got: q.done >= 100, icon: 'rotate', progress: Math.min(1, q.done / 100) },
     { id: 'qadaZero', title: 'Slate Restored', desc: 'Bring your Qada list to zero', got: q.done > 0 && qRemaining === 0, icon: 'trophy' },

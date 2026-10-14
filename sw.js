@@ -1,9 +1,10 @@
 // Falah service worker: offline app shell + notification actions.
-const CACHE = 'falah-v4';
+const CACHE = 'falah-v5';
+// Adhan recordings are not pre-cached (they are large); they are cached the first time they play.
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'app.css',
   'app.js', 'views.js', 'ui.js', 'store.js', 'times.js', 'tracker.js', 'notify.js',
-  'praytimes.js', 'data.js', 'icons.js', 'art.js', 'wirid.js', 'guide.js',
+  'praytimes.js', 'data.js', 'icons.js', 'art.js', 'wirid.js', 'guide.js', 'garden.js',
   'icon.svg', 'icon-192.png', 'icon-512.png',
 ];
 
